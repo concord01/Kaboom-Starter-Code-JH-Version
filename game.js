@@ -9,9 +9,9 @@ kaboom({
 setGravity(800);
 
 // --- Load Assets ---
-// For Day 1, we only need the player's sprite.
-loadSprite("apple", "https://kaboomjs.com/sprites/apple.png");
-// New thing: Enemy sprite
+// We must load all sprites before we can use them in the game.
+loadSprite("pineapple", "https://kaboomjs.com/sprites/pineapple.png");
+// This was the missing line! Now the game knows what an "enemy" looks like.
 loadSprite("enemy", "https://kaboomjs.com/sprites/gigagantrum.png");
 
 
@@ -48,42 +48,48 @@ scene("main", () => {
 
     // --- The Player Character ---
     const player = add([
-        sprite("apple"),
+        sprite("pineapple"),
         pos(100, 100),
         area({ scale: 0.7 }),
         body(),
         "player",
+        timer(),
+        health(2),
     ]);
 
-    // The enemy patrol
-    function patrol(){
-        return{
-            id:"patrol",
-            require: ["pos","area"],
+    // --- The Enemy Character ---
+    // This function DEFINES the patrol component for our enemy
+    function patrol() {
+        return {
+            id: "patrol",
+            require: [ "pos", "area", ],
             dir: -1,
-            update(){
-                this.move(60*this.dir,0)
+            update() {
+                this.move(60 * this.dir, 0);
             },
-            // Next event will flip direction if enemy collides with something
-            add(){
+            // This event flips the direction when the enemy collides with something
+            add() {
                 this.onCollide((obj, col) => {
-                    if (col.isLeft() || col.isRight()){
+                    // The isSide() function doesn't exist.
+                    // Instead, we check if the collision is from the left OR the right.
+                    if (col.isLeft() || col.isRight()) {
                         this.dir = -this.dir;
                     }
                 });
-            }
-        }
+            },
+        };
     }
 
-    // Add enemy to scene
+    // Add an enemy to the scene
     const enemy = add([
         sprite("enemy"),
-        pos(600,200), // enemy starting pos
+        pos(600, 200), // Start position for the enemy
         area(),
         body(),
-        patrol(), // calling patrol function
+        patrol(), // Use the patrol component we just defined
         "enemy"
-    ])
+    ]);
+
 
     // --- Player Controls & Interactions ---
     onKeyDown("left", () => {
@@ -99,29 +105,44 @@ scene("main", () => {
             player.jump(650);
         }
     });
-    // Collision detection
-    player.onCollide("enemy",(enemy,col) =>{
-        if(col.isBottom){
+
+    player.onCollide("enemy", (enemy, col) => {
+        // If the player lands on top of the enemy
+        if (col.isBottom()) {
             destroy(enemy);
             player.jump(300);
-        }
-        else{
-            destroy(player);
-            go("lose");
-        }
+        } else {
+            // If the player hits the enemy from the side
+            player.health = player.health-1;
+            if (player.health != 0){
+                for(i = 0; i < 10; i++){
+                    player.opacity = 0.2
+                    wait(0.4, () =>{
+                        player.opacity = 1
+                    });
+                };
+            }
+            else if (player.health == 0){
+                destroy(player);
+            };
+        };
     });
 });
 
-// Game over scene
+
+// --- Game Over Scene ---
 scene("lose", () => {
     add([
         text("Game Over"),
         pos(center()),
-        anchor("center")
+        anchor("center"),
     ]);
+
+    // Go back to the main game after 2 seconds
+    wait(2, () => {
+        go("main");
+    });
 });
 
 // Start the game
 go("main");
-
-
